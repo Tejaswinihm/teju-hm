@@ -1,3 +1,7 @@
+
+
+
+
 set val(stop) 10.0 ;
 set ns [new Simulator]
 set tracefile [open p1.tr w]
