@@ -2,6 +2,7 @@ echo "enter first file name:"
 read file1
 if [ -e $file1 ]
 then
+
 set -- `ls -ld $file1`
 file1perm=$1
 else
