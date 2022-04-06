@@ -6,7 +6,7 @@ echo "------------$i contents are-----------"
 cat $i | tr "[a-z]" "[A-Z]"
 echo "-------"
 else
-echo "$file doesnt exists"
+echo "$file doesnt exit"
 fi
 done
 
