@@ -1,46 +1,102 @@
+# This script is created by NSG2 beta1
+# <http://wushoupong.googlepages.com/nsg>
 
+#===================================
+#     Simulation parameters setup
+#===================================
+set val(stop)   10.0                         ;# time of simulation end
 
-
-
-set val(stop) 10.0 ;
+#===================================
+#        Initialization        
+#===================================
+#Create a ns simulator
 set ns [new Simulator]
-set tracefile [open p1.tr w]
-$ns trace-all $tracefile
-set namfile [open p1.nam w]
-$ns namtrace-all $namfile
-proc finish {} {
-global ns tracefile namfile
-$ns flush-trace
-close $tracefile
-close $namfile
-exec nam p1.nam &
-exec awk -f prg1.awk p1.tr&
-exit 0
-}
 
+#Open the NS trace file
+set tracefile [open out.tr w]
+$ns trace-all $tracefile
+
+#Open the NAM trace file
+set namfile [open out.nam w]
+$ns namtrace-all $namfile
+
+#===================================
+#        Nodes Definition        
+#===================================
+#Create 4 nodes
 set n0 [$ns node]
 set n1 [$ns node]
 set n2 [$ns node]
-$ns duplex-link $n0 $n1 200Mb 10ms DropTail 
-$ns duplex-link $n1 $n2 20Mb 1000ms DropTail
-$ns queue-limit $n0 $n1 10
+set n3 [$ns node]
 
-set udp1 [new Agent/UDP]
-$ns attach-agent $n0 $udp1
-set null2 [new Agent/Null]
-$ns attach-agent $n2 $null2
-$ns connect $udp1 $null2
-$udp1 set packetsize_ 1000
+#===================================
+#        Links Definition        
+#===================================
+#Createlinks between nodes
+$ns duplex-link $n0 $n2 1000kb 10ms DropTail
+$ns queue-limit $n0 $n2 50
+$ns duplex-link $n1 $n2 1000kb  10ms DropTail
+$ns queue-limit $n1 $n2 50
+$ns duplex-link $n3 $n2 1000kb  10ms DropTail
+$ns queue-limit $n3 $n2 50
 
-set cbr1 [new Application/Traffic/CBR]
-$cbr1 attach-agent $udp1
-$cbr1 set packetSize_ 500
-$cbr1 set rate_ 2.0Mb
-$cbr1 set interval_ 0.005
-$ns at 0.1 "$cbr1 start"
-$ns at 9.0 "$cbr1 stop"
-$ns at 1.0 "finish"
-$ns run 
+#Give node position (for NAM)
+$ns duplex-link-op $n0 $n2 orient right-down
+$ns duplex-link-op $n1 $n2 orient left-down
+$ns duplex-link-op $n3 $n2 orient left-up
+
+#===================================
+#        Agents Definition        
+#===================================
+set tcp0 [new Agent/TCP]
+$ns attach-agent $n0 $tcp0
+
+set tcp1 [new Agent/TCP]
+$ns attach-agent $n1 $tcp1
+
+set sink1 [new Agent/TCPSink]
+$ns attach-agent $n3 $sink1
+$ns connect $tcp0 $sink1
+
+set sink [new Agent/TCPSink]
+$ns attach-agent $n3 $sink
+$ns connect $tcp1 $sink
+
+$tcp0 set class_ 1
+$ns color 1 blue
+
+$tcp1 set class_ 2
+$ns color 2 red
+
+#===================================
+#        Applications Definition        
+#===================================
+#Setup a FTP Application over TCP connection
+set ftp0 [new Application/FTP]
+$ftp0 attach-agent $tcp0
+$ns at 1.0 "$ftp0 start"
+$ns at 2.0 "$ftp0 stop"
+
+set telnet0 [new Application/Telnet]
+$telnet0 set interval_ 0.005
+$telnet0 attach-agent $tcp1
+$ns at 1.0 "$telnet0 start"
+$ns at 2.0 "$telnet0 stop"
 
 
-
+#===================================
+#        Termination        
+#===================================
+#Define a 'finish' procedure
+proc finish {} {
+    global ns tracefile namfile
+    $ns flush-trace
+    close $tracefile
+    close $namfile
+    exec nam out.nam &
+    exit 0
+}
+$ns at $val(stop) "$ns nam-end-wireless $val(stop)"
+$ns at $val(stop) "finish"
+$ns at $val(stop) "puts \"done\" ; $ns halt"
+$ns run
